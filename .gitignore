@@ -1,0 +1,9 @@
+.DS_Store
+scripts/.DS_Store
+stylesheets/.DS_Store
+shp/Country.dbf
+shp/Country.prj
+shp/Country.sbn
+shp/Country.sbx
+shp/Country.shp
+shp/Country.shx
