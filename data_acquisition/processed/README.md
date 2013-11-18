@@ -1,0 +1,1 @@
+This is the section of the data that is being processed. Data that is being transformed via some scripts in ../ is being stored here. Eventually some of this data will be given a home in the head of the project.
