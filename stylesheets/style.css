@@ -1,15 +1,58 @@
 svg#philippines {
   margin: 20px;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  position: fixed;
+  width: 275px;
+  height: 400px;
+}
+
+.instaCard {
+  width: 180px;
+  margin: 0 10px 10px 10px;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  display: inline-block;
+  color: #aaa;
+}
+
+.instaImage {
+  width: 170px;
+  height: 170px;
+  margin: 5px;
+}
+
+.instaName {
+  font-size: 1.25em;
+  font-weight: bold;
+  margin: 5px 5px 0 5px;
+}
+
+.instaDate {
+  margin: 0 5px 5px 5px;
+}
+
+circle.drop {
+  cursor: move;
+}
+
+#instagram {
+  display: inline-block;
+  /*width: 450px;*/
+  height: 100%;
+  position: absolute;
+  left: 315px;
+  margin: 20px 0;
 }
 
 /*tips*/
-
 .d3-tip {
     background-color: rgba(0, 0, 0, .65);
-    padding: 5px 10px;
+    padding: 10px;
     color: #fff;
     font-size: .85em;
     border-radius: 3px;
+    width: 450px;
 }
 
 .d3-tip:after {

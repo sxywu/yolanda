@@ -40,17 +40,22 @@ require([
     "backbone",
     "d3",
     "d3.tip",
-    "topojson"
+    "topojson",
+    "text!app/templates/Image.Template.html"
 ], function(
     $,
     _,
     Backbone,
     d3,
     tip,
-    topojson
+    topojson,
+    ImageTemplate
 ) {
-    var width = 900,
-        height = 600,
+    var width = 275,
+        height = 400,
+        imageSize = 7.5,
+        imageBigger = 450,
+        dropSize = 45,
         svg = d3.select("svg#philippines")
             .attr("width", width)
             .attr("height", height);
@@ -61,7 +66,10 @@ require([
             projection = d3.geo.mercator().scale(scale)
                 .center(center).translate([width / 2, height / 2]),
             path = d3.geo.path().projection(projection),
-            circle,
+            line = d3.svg.line()
+                .x(function(d) {return projection([d.attributes.LON, d.attributes.LAT])[0]})
+                .y(function(d) {return projection([d.attributes.LON, d.attributes.LAT])[1]})
+                .interpolate("basis"),
             bounds  = path.bounds(datum),
             hscale  = scale*width  / (bounds[1][0] - bounds[0][0]),
             vscale  = scale*height / (bounds[1][1] - bounds[0][1]),
@@ -70,8 +78,10 @@ require([
             height - (bounds[0][1] + bounds[1][1])/2],
             tip = d3.tip().attr('class', 'd3-tip')
                 .direction("e")
+                .style("pointer-events", "none")
                 .html(function(d) {
-                    return d.attributes.MONTH + " " + d.attributes.DAY + ", " + d.attributes.HHMM; 
+                    d.caption = d.caption || "";
+                    return _.template(ImageTemplate, d);
                 });
 
         projection = d3.geo.mercator().center(center)
@@ -80,29 +90,155 @@ require([
         circle = d3.geo.circle();
         svg.append("path").datum(datum)
             .attr("d", path)
-            .attr("fill", "#fdf6e3")
-            .attr("stroke", "#eee8d5");
+            .attr("fill", "#fafafa")
+            .attr("stroke", "#aaa");
 
         d3.json("json/yolanda.json", function(json) {
+        
+            var minLat = _.chain(json.features)
+                .pluck("attributes").pluck("LAT").min().value(),
+                maxLat = _.chain(json.features)
+                .pluck("attributes").pluck("LAT").max().value(),
+                minLon = _.chain(json.features)
+                .pluck("attributes").pluck("LON").min().value(),
+                maxLon = _.chain(json.features)
+                .pluck("attributes").pluck("LON").max().value();
+            d3.json("json/instagram.json", function(instadata) {
+                console.log(instadata);
+                var instagram = _.chain(instadata)
+                    .filter(function(obj) {
+                        return obj.location
+                        && (obj.location.latitude > minLat)
+                        && (obj.location.latitude < maxLat)
+                        && (obj.location.longitude > minLon)
+                        && (obj.location.longitude < maxLon);
+                    }).sortBy(function(obj) {
+                        return obj.like_count;
+                    }).last(1000).value();
+
+                svg.append("clipPath")
+                    .attr("id", "clipCircle")
+                    .append("circle")
+                    .attr("r", imageSize / 2)
+                    .attr("cx", imageSize / 2)
+                    .attr("cy", imageSize / 2);
+                svg.selectAll('image.instagram')
+                    .data(instagram).enter().append("image")
+                    .classed("instagram", true)
+                    .attr("transform", function(d) {
+                        var positions = projection([d.location.longitude, d.location.latitude]);
+                        d.x = positions[0];
+                        d.y = positions[1];
+                        return "translate(" + positions[0] + ", " + positions[1] + ")";
+                    }).attr("height", imageSize)
+                    .attr("width", imageSize)
+                    .attr("xlink:href", function(d) {
+                        return d.image.url;
+                    })
+                    .attr("clip-path", "url('#clipCircle')");
+                // _.each(json, function(data) {
+
+                    // $("#instagram").append("<div><b>" + data.user.full_name + "(" + data.like_count + ")</b><br>");
+                    // $("#instagram").append(data.caption + "<br>");
+                    // if (data.location) {$("#instagram").append(data.location.latitude + ", "  + data.location.longitude + "<br>");}
+                    // console.log(data.image.url);
+                    // $("#instagram").append("<img src='" + data.image.url + "' /></div>");
+                // });
+            });
             svg.selectAll('circle.typhoon')
                 .data(json.features).enter().append("circle")
                 .classed("typhoon", true)
                 .attr("transform", function(d) {
-                    console.log();
                     var positions = projection([d.attributes.LON, d.attributes.LAT]);
                     return "translate(" + positions[0] + ", " + positions[1] + ")";
-                }).attr("r", function(d) {
-                    return d.attributes.INTENSITY / 2;
-                }).attr("fill", "#268bd2")
-                .attr("opacity", 0.25)
-                .attr("stroke", "#6c71c4")
-                .attr("stroke-width", 3)
-                .call(tip)
-                .on("mouseover", tip.show)
-                .on("mouseleave", tip.hide);
+                }).attr("r", 4)
+                .attr("fill", "#666")
+                .attr("stroke", "none");
+            svg.append("path")
+                .datum(json.features).classed("typhoon", true)
+                .attr("stroke", "#666")
+                .attr("fill", "none")
+                .attr("d", line)
+                .attr("stroke-width", 2)
+                .attr("opacity", .5);
+
+            var drag = d3.behavior.drag()
+                .on("drag", function() {
+                    d3.select(this)
+                        .attr("transform", function() {
+                            return "translate(" + d3.event.x + "," + d3.event.y + ")";
+                        });
+                    $("#instagram").empty();
+                    d3.selectAll("image.instagram").each(function(d) {
+                        var x1 = d3.event.x - dropSize,
+                            x2 = d3.event.x + dropSize,
+                            y1 = d3.event.y - dropSize,
+                            y2 = d3.event.y + dropSize;
+                        if (d.x > x1 && d.x < x2 && d.y > y1 && d.y < y2) {
+                            $("#instagram").append(_.template(ImageTemplate, d));
+                        }
+                    });
+                });
+
+            svg.append("circle")
+                .datum(json.features[26]).classed("drop", true)
+                .attr("fill", "transparent")
+                .attr("stroke", "#aaa")
+                .attr("transform", function(d) {
+                    var positions = projection([d.attributes.LON, d.attributes.LAT]);
+                    return "translate(" + positions[0] + ", " + positions[1] + ")";
+                }).attr("r", dropSize)
+                .call(drag);
+
+
         });
+
+
     });
 
     
+    // d3.json("json/twitter2.json", function(json) {
+    //     _.each(json.statuses, function(tweet, i) {
+    //         console.log(tweet, tweet.coordinates);
+    //         $("#tweets").append("<p>" + i + ".  " + tweet.text + "<br>");
+    //         if (tweet.entities.media) {
+    //             _.each(tweet.entities.media, function(media) { 
+    //                 $("#tweets").append("<img src='" + media.media_url + "' />");
+    //             });
+    //         }
+    //         if (tweet.entities.urls) {
+    //             _.each(tweet.entities.urls, function(url) {
 
+    //             });
+    //         }
+    //     });
+    // });
+
+    
+
+    // var access_token = "5052748.fe18de0.21f9f5b18e834f5da5a827bbcc8c5bbe",
+    //     url = "https://api.instagram.com/v1/tags/haiyan/media/recent",
+    //     min_id = "",
+    //     data = localStorage.yolanda || {},
+    //     i = 0;
+
+    // data.data = [];
+    // function processRequest(request) {
+    //     $.ajax({
+    //         url: request, 
+    //         dataType: 'jsonp',
+    //         success: function(resp) {
+    //             localStorage.pagination = resp.pagination;
+    //             localStorage[i] = JSON.stringify(resp.data);
+
+
+    //             i += 1;
+    //             processRequest(resp.pagination.next_url);
+    //         }
+    //     });
+    // }
+
+    // processRequest(url + "?access_token=" + access_token);
+
+    // window.data = data;
 });
