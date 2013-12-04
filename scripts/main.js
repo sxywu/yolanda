@@ -104,7 +104,6 @@ require([
                 maxLon = _.chain(json.features)
                 .pluck("attributes").pluck("LON").max().value();
             d3.json("json/instagram.json", function(instadata) {
-                console.log(instadata);
                 var instagram = _.chain(instadata)
                     .filter(function(obj) {
                         return obj.location
@@ -114,7 +113,7 @@ require([
                         && (obj.location.longitude < maxLon);
                     }).sortBy(function(obj) {
                         return obj.like_count;
-                    }).last(1000).value();
+                    }).last(50).value();
 
                 svg.append("clipPath")
                     .attr("id", "clipCircle")
@@ -151,31 +150,48 @@ require([
                 .attr("transform", function(d) {
                     var positions = projection([d.attributes.LON, d.attributes.LAT]);
                     return "translate(" + positions[0] + ", " + positions[1] + ")";
-                }).attr("r", 4)
-                .attr("fill", "#666")
+                }).attr("r", 3)
+                .attr("fill", "#073642")
                 .attr("stroke", "none");
             svg.append("path")
                 .datum(json.features).classed("typhoon", true)
-                .attr("stroke", "#666")
+                .attr("stroke", "#073642")
                 .attr("fill", "none")
                 .attr("d", line)
                 .attr("stroke-width", 2)
                 .attr("opacity", .5);
 
-            var drag = d3.behavior.drag()
+            var typhoonCoords = _.map(json.features, function(d) {
+                    return {
+                        x: projection([d.attributes.LON, d.attributes.LAT])[0],
+                        y: projection([d.attributes.LON, d.attributes.LAT])[1]
+                    }
+                }),
+                drag = d3.behavior.drag()
                 .on("drag", function() {
+                    var selection = this,
+                        y,
+                        x = (d3.event.x > width ? width : (d3.event.x < 0 ? 0 : d3.event.x));
+                    $("#instagram").empty();
+                    _.some(typhoonCoords, function(coords, i) {
+                        if (x > coords.x) {
+                            var slope = (coords.y - typhoonCoords[i - 1].y) / (coords.x - typhoonCoords[i - 1].x);
+                            y = (x - typhoonCoords[i - 1].x) * slope + typhoonCoords[i - 1].y;
+                            return true;
+                        }
+                    });
                     d3.select(this)
                         .attr("transform", function() {
-                            return "translate(" + d3.event.x + "," + d3.event.y + ")";
+                            return "translate(" + x + "," + y + ")";
                         });
-                    $("#instagram").empty();
+                    var x1 = x - dropSize,
+                        x2 = x + dropSize,
+                        y1 = y - dropSize,
+                        y2 = y + dropSize;
                     d3.selectAll("image.instagram").each(function(d) {
-                        var x1 = d3.event.x - dropSize,
-                            x2 = d3.event.x + dropSize,
-                            y1 = d3.event.y - dropSize,
-                            y2 = d3.event.y + dropSize;
                         if (d.x > x1 && d.x < x2 && d.y > y1 && d.y < y2) {
-                            $("#instagram").append(_.template(ImageTemplate, d));
+                            d.caption = d.caption || "";
+                            $("#instagram").prepend(_.template(ImageTemplate, d));
                         }
                     });
                 });
