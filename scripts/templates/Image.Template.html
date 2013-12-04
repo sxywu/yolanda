@@ -1,6 +1,7 @@
 <div class="instaCard">
   <div class='instaName'><%= user.username %></div>
   <div class='instaDate'><%= created_time.split(" ")[0] %></div>
+  <div class='instaLike'><span class="glyphicon glyphicon-heart"></span><%= like_count %></div>
   <img src='<%= image.url %>' class='instaImage' />
   <div class='instaCaption' style="display:none"><%= caption %></div>
 </div>
