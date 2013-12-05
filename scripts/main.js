@@ -82,7 +82,21 @@ require([
                 .html(function(d) {
                     d.caption = d.caption || "";
                     return _.template(ImageTemplate, d);
-                });
+                }),
+            mouseover = function(e) {
+                console.log("mouseover");
+                $(e.target).siblings(".instaCaption").css("opacity", 1);
+                $(e.target).siblings(".instaCaption").css("height", "170px");
+
+                return false;
+            },
+            mouseleave = function(e) {
+                console.log("mouseleave");
+                $(e.target).siblings(".instaCaption").css("height", "0px");
+                $(e.target).siblings(".instaCaption").css("opacity", 0);
+
+                return false;
+            };
 
         projection = d3.geo.mercator().center(center)
             .scale(scale).translate(offset);
@@ -135,14 +149,6 @@ require([
                         return d.image.url;
                     })
                     .attr("clip-path", "url('#clipCircle')");
-                // _.each(json, function(data) {
-
-                    // $("#instagram").append("<div><b>" + data.user.full_name + "(" + data.like_count + ")</b><br>");
-                    // $("#instagram").append(data.caption + "<br>");
-                    // if (data.location) {$("#instagram").append(data.location.latitude + ", "  + data.location.longitude + "<br>");}
-                    // console.log(data.image.url);
-                    // $("#instagram").append("<img src='" + data.image.url + "' /></div>");
-                // });
             });
             svg.selectAll('circle.typhoon')
                 .data(json.features).enter().append("circle")
@@ -194,6 +200,8 @@ require([
                             $("#instagram").prepend(_.template(ImageTemplate, d));
                         }
                     });
+                    $(".instaHover").mouseenter(mouseover);
+                    $(".instaHover").mouseleave(mouseleave);
                 });
 
             svg.append("circle")
@@ -209,52 +217,5 @@ require([
 
         });
 
-
     });
-
-    
-    // d3.json("json/twitter2.json", function(json) {
-    //     _.each(json.statuses, function(tweet, i) {
-    //         console.log(tweet, tweet.coordinates);
-    //         $("#tweets").append("<p>" + i + ".  " + tweet.text + "<br>");
-    //         if (tweet.entities.media) {
-    //             _.each(tweet.entities.media, function(media) { 
-    //                 $("#tweets").append("<img src='" + media.media_url + "' />");
-    //             });
-    //         }
-    //         if (tweet.entities.urls) {
-    //             _.each(tweet.entities.urls, function(url) {
-
-    //             });
-    //         }
-    //     });
-    // });
-
-    
-
-    // var access_token = "5052748.fe18de0.21f9f5b18e834f5da5a827bbcc8c5bbe",
-    //     url = "https://api.instagram.com/v1/tags/haiyan/media/recent",
-    //     min_id = "",
-    //     data = localStorage.yolanda || {},
-    //     i = 0;
-
-    // data.data = [];
-    // function processRequest(request) {
-    //     $.ajax({
-    //         url: request, 
-    //         dataType: 'jsonp',
-    //         success: function(resp) {
-    //             localStorage.pagination = resp.pagination;
-    //             localStorage[i] = JSON.stringify(resp.data);
-
-
-    //             i += 1;
-    //             processRequest(resp.pagination.next_url);
-    //         }
-    //     });
-    // }
-
-    // processRequest(url + "?access_token=" + access_token);
-
-    // window.data = data;
 });

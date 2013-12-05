@@ -21,6 +21,15 @@ svg#philippines {
   color: #666;
   vertical-align: top;
   background-color: #fff;
+  position: relative;
+}
+
+.instaHover {
+  opacity: 0;
+  position: absolute;
+  width: 180px;
+  height: 100%;
+  top: 0;
 }
 
 .instaImage {
@@ -28,7 +37,7 @@ svg#philippines {
   height: 170px;
   margin: 4px;
   border: 1px solid #bbb;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 .instaName {
@@ -42,17 +51,31 @@ svg#philippines {
   margin: 0 5px 5px 5px;
   float: left;
   display: inline-block;
+  font-size: .85em;
 }
 
 .instaLike {
   float: right;
   display: inline-block;
   margin: 0 5px 5px 5px;
+  font-size: .85em;
 }
 
 .instaCaption {
-  font-size: .75em;
-  margin: 0 5px 5px 5px;
+  font-size: .85em;
+  margin: 4px;
+  padding: 5px;
+  position: absolute;
+  width: 170px;
+  height: 0px;
+  bottom: 0px;
+  background-color: rgba(256, 256, 256, 0.85);
+  overflow: hidden;
+  -moz-transition:all .5s;
+  -webkit-transition:all .5s;
+  -o-transition:width all .5s;
+  transition:width all .5s;
+  opacity: 0;
 }
 
 circle.drop {
