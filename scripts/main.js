@@ -38,18 +38,22 @@ require([
     "jquery",
     "underscore",
     "backbone",
+    "bootstrap",
     "d3",
     "d3.tip",
     "topojson",
-    "text!app/templates/Image.Template.html"
+    "text!app/templates/Image.Template.html",
+    "text!app/templates/ImageModal.Template.html"
 ], function(
     $,
     _,
     Backbone,
+    bootstrap,
     d3,
     tip,
     topojson,
-    ImageTemplate
+    ImageTemplate,
+    ImageModalTemplate
 ) {
     var width = 275,
         height = 400,
@@ -84,18 +88,34 @@ require([
                     return _.template(ImageTemplate, d);
                 }),
             mouseover = function(e) {
-                console.log("mouseover");
                 $(e.target).siblings(".instaCaption").css("opacity", 1);
-                $(e.target).siblings(".instaCaption").css("height", "170px");
+                $(e.target).siblings(".instaCaption").css("height", "190px");
 
                 return false;
             },
             mouseleave = function(e) {
-                console.log("mouseleave");
                 $(e.target).siblings(".instaCaption").css("height", "0px");
                 $(e.target).siblings(".instaCaption").css("opacity", 0);
 
                 return false;
+            },
+            clickHover = function(e) {
+                var $card = $(e.target).parent(),
+                    name = $card.children(".instaName").text(),
+                    like_count = $card.children(".instaLike").html(),
+                    date = $card.children(".instaDate").text(),
+                    url = $card.children(".instaImage").attr("src"),
+                    caption = $card.children(".instaCaption").text();
+
+                console.log(name, like_count, date, url, caption);
+                $(".modal").html(_.template(ImageModalTemplate, {
+                    name: name,
+                    like_count: like_count,
+                    date: date,
+                    url: url,
+                    caption: caption
+                }));
+                $(".modal").modal("show");
             };
 
         projection = d3.geo.mercator().center(center)
@@ -202,6 +222,7 @@ require([
                     });
                     $(".instaHover").mouseenter(mouseover);
                     $(".instaHover").mouseleave(mouseleave);
+                    $(".instaHover").click(clickHover);
                 });
 
             svg.append("circle")
