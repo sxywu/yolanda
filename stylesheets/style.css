@@ -2,7 +2,7 @@ body {
   background-color: #fafafa;
 }
 
-svg#philippines {
+svg#country {
   margin: 20px;
   border: 1px solid #bbb;
   border-radius: 3px;
@@ -10,6 +10,17 @@ svg#philippines {
   width: 275px;
   height: 400px;
   background-color: #fff;
+}
+
+svg#zoom {
+  margin: 20px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  background-color: #fff;
+  left: 300px;
 }
 
 .instaCard {
