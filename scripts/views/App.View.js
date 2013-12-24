@@ -152,7 +152,8 @@ define([
         .attr("transform", "translate(" + positions[0] + ", " + positions[1] + ")")
         .attr("stroke", "none")
         .attr("fill", "transparent")
-        .call(this.drag());
+        .call(this.drag())
+        .call(this.zoom());
       this.svg.dropDrag = this.svg.country.append("circle")
         .classed("dropDrag", true)
         .attr("r", app.height / app.scale)
@@ -165,52 +166,79 @@ define([
         .classed("overlay", true)
         .attr("width", app.height)
         .attr("height", app.height)
-        .attr("opacity", 0)
-        .call(this.zoom(coords.x, coords.y));
+        .attr("opacity", 0);
+        // .call(this.zoom(coords.x, coords.y));
       this.dropCoords = [positions[0], positions[1]];
       this.zoomCoords = [coords.x, coords.y];
     },
-    zoom: function(x, y) {
+    // zoom: function(x, y) {
+    //   var that = this,
+    //     typhoonCoords = this.typhoonCoords || [],
+    //     zoom = d3.behavior.zoom()
+    //       .size([app.height, app.height])
+    //       .scale(app.scale / 2)
+    //       .translate([x, y])
+    //       .center([app.height / 2, app.height / 2])
+    //       .scaleExtent([1.5, 8])
+    //       .on("zoomstart", function() {
+    //         that.svg.zoom.attr("transform", "translate(" + that.zoomCoords[0] + "," + that.zoomCoords[1] + ")scale(" + (that.scale / 2) + ")");
+    //       }).on("zoom", function() {
+    //         var newX = d3.event.translate[0],
+    //           newY = d3.event.translate[1],
+    //           scale = d3.event.scale,
+    //           slope,
+    //           countryX, countryY;
+    //         if ((that.scale / 2) !== scale) {
+    //           typhoonCoords = that.getTyphoonCoords(scale * 2);
+    //           that.scale = scale * 2;
+    //         }
+    //         if (newX > typhoonCoords[that.typhoonIndex].x) {
+    //           that.typhoonIndex += 1;
+    //         } else if (typhoonCoords[that.typhoonIndex - 1].x > newX) {
+    //           that.typhoonIndex -= 1;
+    //         }
+    //         slope = (typhoonCoords[that.typhoonIndex].y - typhoonCoords[that.typhoonIndex - 1].y) / (typhoonCoords[that.typhoonIndex].x - typhoonCoords[that.typhoonIndex - 1].x);
+    //         newY = (newX - typhoonCoords[that.typhoonIndex - 1].x) * slope + typhoonCoords[that.typhoonIndex - 1].y;
+    //         radius = app.height / (scale * 2);
+    //         countryX = -((newX / scale) - radius);
+    //         countryY = -((newY / scale) - radius);
+
+    //         that.zoomCoords[0] = newX;
+    //         that.zoomCoords[1] = newY;
+    //         that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + d3.event.scale + ")");
+    //         that.dropCoords[0] = countryX;
+    //         that.dropCoords[1] = countryY;
+    //         that.svg.drop.attr("r", radius)
+    //           .attr("transform", "translate(" + countryX + "," + countryY + ")");
+    //         that.svg.dropDrag.attr("r", radius)
+    //           .attr("transform", "translate(" + countryX + "," + countryY + ")");
+    //       }).on("zoomend", function() {
+    //         var scale = parseFloat(that.svg.zoom.attr("transform").split("scale(")[1].split(")")[0]);
+    //         that.svg.zoom.selectAll("path").style("stroke-width", 1 / scale + "px");
+    //       });
+
+    //   return zoom;
+    // },
+    zoom: function() {
       var that = this,
         typhoonCoords = this.typhoonCoords || [],
         zoom = d3.behavior.zoom()
-          .size([app.height, app.height])
-          .scale(app.scale / 2)
-          .translate([x, y])
-          .center([app.height / 2, app.height / 2])
-          .scaleExtent([1.5, 8])
-          .on("zoomstart", function() {
-            that.svg.zoom.attr("transform", "translate(" + that.zoomCoords[0] + "," + that.zoomCoords[1] + ")scale(" + (that.scale / 2) + ")");
-          }).on("zoom", function() {
-            var newX = d3.event.translate[0],
-              newY = d3.event.translate[1],
-              scale = d3.event.scale,
-              slope,
-              countryX, countryY;
-            if ((that.scale / 2) !== scale) {
-              typhoonCoords = that.getTyphoonCoords(scale * 2);
-              that.scale = scale * 2;
-            }
-            if (newX > typhoonCoords[that.typhoonIndex].x) {
-              that.typhoonIndex += 1;
-            } else if (typhoonCoords[that.typhoonIndex - 1].x > newX) {
-              that.typhoonIndex -= 1;
-            }
-            slope = (typhoonCoords[that.typhoonIndex].y - typhoonCoords[that.typhoonIndex - 1].y) / (typhoonCoords[that.typhoonIndex].x - typhoonCoords[that.typhoonIndex - 1].x);
-            newY = (newX - typhoonCoords[that.typhoonIndex - 1].x) * slope + typhoonCoords[that.typhoonIndex - 1].y;
-            radius = app.height / (scale * 2);
-            countryX = -((newX / scale) - radius);
-            countryY = -((newY / scale) - radius);
+          .on("zoom", function() {
+            var radius = (app.height / that.scale) * d3.event.scale,
+              scale, newX, newY;
+
+            radius = (radius > (app.width / 2) ? app.width / 2 : (radius < 20 ? 20 : radius));
+            scale = app.height / radius;
+            newX = (-that.dropCoords[0] + (app.height / scale)) * (scale / 2);
+            newY = (-that.dropCoords[1] + (app.height / scale)) * (scale / 2);
 
             that.zoomCoords[0] = newX;
             that.zoomCoords[1] = newY;
-            that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + d3.event.scale + ")");
-            that.dropCoords[0] = countryX;
-            that.dropCoords[1] = countryY;
-            that.svg.drop.attr("r", radius)
-              .attr("transform", "translate(" + countryX + "," + countryY + ")");
-            that.svg.dropDrag.attr("r", radius)
-              .attr("transform", "translate(" + countryX + "," + countryY + ")");
+            that.svg.drop.attr("r", radius);
+            that.svg.dropDrag.attr("r", radius);
+
+            that.scale = scale;
+            that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
           }).on("zoomend", function() {
             var scale = parseFloat(that.svg.zoom.attr("transform").split("scale(")[1].split(")")[0]);
             that.svg.zoom.selectAll("path").style("stroke-width", 1 / scale + "px");
@@ -264,11 +292,11 @@ define([
             newX = (-that.dropCoords[0] + (app.height / scale)) * (scale / 2);
             newY = (-that.dropCoords[1] + (app.height / scale)) * (scale / 2);
 
+            that.zoomCoords[0] = newX;
+            that.zoomCoords[1] = newY;
             that.svg.drop.attr("r", radius);
             that.svg.dropDrag.attr("r", radius);
-            that.svg.zoom.attr("transform", "translate(" + that.zoomCoords[0] + "," + that.zoomCoords[1] + ")scale(" + (that.scale / 2) + ")");
 
-            that.getTyphoonCoords(scale);
             that.scale = scale;
             that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
           }).on("dragend", function() {
