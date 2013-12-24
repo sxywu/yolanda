@@ -94,6 +94,10 @@ circle.drop {
   cursor: move;
 }
 
+circle.dropDrag {
+  cursor: nw-resize;
+}
+
 #instagram {
   display: inline-block;
   /*width: 450px;*/

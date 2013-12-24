@@ -96,6 +96,12 @@ define([
         .attr("stroke", "none");
       this.scale = app.scale;
       this.typhoonIndex = app.typhoonIndex;
+      this.typhoonCoordsOriginal = _.map(data, function(d) {
+        return {
+          x: projection([d.attributes.LON, d.attributes.LAT])[0],
+          y: projection([d.attributes.LON, d.attributes.LAT])[1]
+        }
+      });
       this.typhoonCoords = _.map(data, function(d) {
         var x = projection([d.attributes.LON, d.attributes.LAT])[0],
           y = projection([d.attributes.LON, d.attributes.LAT])[1];
@@ -104,6 +110,7 @@ define([
             y: (-y + (app.height / that.scale)) * (that.scale / 2)
         }
       });
+
     },
     renderAssistance: function() {
       var projection = this.countryModel.get("projection"),
@@ -140,16 +147,28 @@ define([
           "translate(" + coords.x + "," + coords.y + ")" + "scale(" + (app.scale / 2) + ")");
       this.svg.zoom.selectAll("path").style("stroke-width", 2 / app.scale + "px")
       this.svg.drop = this.svg.country.append("circle")
+        .classed("drop", true)
         .attr("r", app.height / app.scale)
         .attr("transform", "translate(" + positions[0] + ", " + positions[1] + ")")
-        .attr("stroke", "#bbb")
-        .attr("fill-opacity", 0);
+        .attr("stroke", "none")
+        .attr("fill", "transparent")
+        .call(this.drag());
+      this.svg.dropDrag = this.svg.country.append("circle")
+        .classed("dropDrag", true)
+        .attr("r", app.height / app.scale)
+        .attr("transform", "translate(" + positions[0] + ", " + positions[1] + ")")
+        .attr("fill", "none")
+        .attr("stroke", "#999")
+        .attr("stroke-width", 3)
+        .call(this.dropDrag());
       this.svg.zoom.append("rect")
         .classed("overlay", true)
         .attr("width", app.height)
         .attr("height", app.height)
         .attr("opacity", 0)
         .call(this.zoom(coords.x, coords.y));
+      this.dropCoords = [positions[0], positions[1]];
+      this.zoomCoords = [coords.x, coords.y];
     },
     zoom: function(x, y) {
       var that = this,
@@ -159,8 +178,10 @@ define([
           .scale(app.scale / 2)
           .translate([x, y])
           .center([app.height / 2, app.height / 2])
-          .scaleExtent([1, 8])
-          .on("zoom", function() {
+          .scaleExtent([1.5, 8])
+          .on("zoomstart", function() {
+            that.svg.zoom.attr("transform", "translate(" + that.zoomCoords[0] + "," + that.zoomCoords[1] + ")scale(" + (that.scale / 2) + ")");
+          }).on("zoom", function() {
             var newX = d3.event.translate[0],
               newY = d3.event.translate[1],
               scale = d3.event.scale,
@@ -172,14 +193,23 @@ define([
             }
             if (newX > typhoonCoords[that.typhoonIndex].x) {
               that.typhoonIndex += 1;
+            } else if (typhoonCoords[that.typhoonIndex - 1].x > newX) {
+              that.typhoonIndex -= 1;
             }
             slope = (typhoonCoords[that.typhoonIndex].y - typhoonCoords[that.typhoonIndex - 1].y) / (typhoonCoords[that.typhoonIndex].x - typhoonCoords[that.typhoonIndex - 1].x);
             newY = (newX - typhoonCoords[that.typhoonIndex - 1].x) * slope + typhoonCoords[that.typhoonIndex - 1].y;
             radius = app.height / (scale * 2);
             countryX = -((newX / scale) - radius);
             countryY = -((newY / scale) - radius);
+
+            that.zoomCoords[0] = newX;
+            that.zoomCoords[1] = newY;
             that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + d3.event.scale + ")");
+            that.dropCoords[0] = countryX;
+            that.dropCoords[1] = countryY;
             that.svg.drop.attr("r", radius)
+              .attr("transform", "translate(" + countryX + "," + countryY + ")");
+            that.svg.dropDrag.attr("r", radius)
               .attr("transform", "translate(" + countryX + "," + countryY + ")");
           }).on("zoomend", function() {
             var scale = parseFloat(that.svg.zoom.attr("transform").split("scale(")[1].split(")")[0]);
@@ -188,6 +218,65 @@ define([
 
       return zoom;
     },
+    drag: function() {
+      var that = this,
+        typhoonCoords = this.typhoonCoordsOriginal || [],
+        drag = d3.behavior.drag()
+          .on("drag", function() {
+            var x = (d3.event.x > app.width ? app.width : (d3.event.x < 0 ? 0 : d3.event.x)),
+              y, slope, newX, newY;
+            if (x < typhoonCoords[that.typhoonIndex].x) {
+              that.typhoonIndex += 1;
+            } else if (typhoonCoords[that.typhoonIndex - 1].x < x) {
+              that.typhoonIndex -= 1;
+            }
+            slope = (typhoonCoords[that.typhoonIndex].y - typhoonCoords[that.typhoonIndex - 1].y) / (typhoonCoords[that.typhoonIndex].x - typhoonCoords[that.typhoonIndex - 1].x);
+            y = (x - typhoonCoords[that.typhoonIndex - 1].x) * slope + typhoonCoords[that.typhoonIndex - 1].y;
+
+            that.svg.drop.attr("transform", function() {
+                  return "translate(" + x + "," + y + ")";
+              });
+            that.svg.dropDrag.attr("transform", function() {
+                  return "translate(" + x + "," + y + ")";
+              });
+            that.dropCoords[0] = x;
+            that.dropCoords[1] = y;
+
+            newX = (-x + (app.height / that.scale)) * (that.scale / 2);
+            newY = (-y + (app.height / that.scale)) * (that.scale / 2);
+            that.zoomCoords[0] = newX;
+            that.zoomCoords[1] = newY;
+            that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
+          });
+      return drag;
+    },
+    dropDrag: function() {
+      var that = this,
+        drag = d3.behavior.drag()
+          .on("drag", function() {
+            var dx = Math.abs(d3.event.x - that.dropCoords[0]),
+              dy = Math.abs(d3.event.y - that.dropCoords[1]),
+              radius = Math.sqrt(dx*dx + dy*dy),
+              scale, newX, newY;
+
+            radius = (radius > (app.width / 2) ? app.width / 2 : (radius < 20 ? 20 : radius));
+            scale = app.height / radius;
+            newX = (-that.dropCoords[0] + (app.height / scale)) * (scale / 2);
+            newY = (-that.dropCoords[1] + (app.height / scale)) * (scale / 2);
+
+            that.svg.drop.attr("r", radius);
+            that.svg.dropDrag.attr("r", radius);
+            that.svg.zoom.attr("transform", "translate(" + that.zoomCoords[0] + "," + that.zoomCoords[1] + ")scale(" + (that.scale / 2) + ")");
+
+            that.getTyphoonCoords(scale);
+            that.scale = scale;
+            that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
+          }).on("dragend", function() {
+            var scale = parseFloat(that.svg.zoom.attr("transform").split("scale(")[1].split(")")[0]);
+            that.svg.zoom.selectAll("path").style("stroke-width", 1 / scale + "px");
+          })
+      return drag;
+    },
     getTyphoonCoords: function(scale) {
       var that = this;
       this.typhoonCoords = _.map(this.typhoonCoords, function(d) {
@@ -195,12 +284,6 @@ define([
           x: ((d.x * 2 / that.scale - (app.height / that.scale)) + (app.height / scale)) * (scale / 2),
           y: ((d.y * 2 / that.scale - (app.height / that.scale)) + (app.height / scale)) * (scale / 2)
         }
-        // var x = projection([d.attributes.LON, d.attributes.LAT])[0],
-        //   y = projection([d.attributes.LON, d.attributes.LAT])[1];
-        // return {
-        //     x: (-x + (app.height / that.scale)) * (that.scale / 2),
-        //     y: (-y + (app.height / that.scale)) * (that.scale / 2)
-        // }
       });
       return this.typhoonCoords;
     }
