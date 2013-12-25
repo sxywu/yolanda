@@ -69,7 +69,7 @@ require([
     app.scale = 8;
     app.typhoonIndex = 26;
     app.colors = {maroon: "#79504A", peach: "#B17370", brown: "#B6978C",
-        green1: "#C9CF9B", green2: "#EDF7BE"};
+        green1: "#C9CF9B", green2: "#EDF7BE", instagram: "#517fa4"};
     appView.render();
 
     // var width = 275,
