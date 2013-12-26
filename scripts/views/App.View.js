@@ -7,7 +7,9 @@ define([
   "app/models/Country.Model",
   "app/models/Yolanda.Model",
   "app/models/Assistance.Model",
-  "app/models/Instagram.Model"
+  "app/models/Instagram.Model",
+  "text!app/templates/Image.Template.html",
+  "text!app/templates/ImageModal.Template.html"
 ], function(
   $,
   _,
@@ -17,7 +19,9 @@ define([
   CountryModel,
   YolandaModel,
   AssistanceModel,
-  InstagramModel
+  InstagramModel,
+  ImageTemplate,
+  ImageModalTemplate
 ) {
   return Backbone.View.extend({
     initialize: function() {
@@ -37,9 +41,10 @@ define([
       this.instagramModel.on("change:data", _.bind(this.renderInstagram, this));
     },
     fetchRest: function() {
+      var projection = this.countryModel.get("projection");
       this.yolandaModel.fetch();
       this.assistanceModel.fetch();
-      this.instagramModel.fetch();
+      this.instagramModel.fetch(projection);
     },
     render: function() {
       this.countryModel.fetch();
@@ -51,7 +56,7 @@ define([
       this.svg.country.append("path")
         .classed("ph", true).datum(data)
         .attr("d", path)
-        .attr("fill", "#fafafa")
+        .attr("fill", "#fff")
         .attr("stroke", "#aaa");
       this.svg.zoom.append("path")
         .classed("ph", true).datum(data)
@@ -69,14 +74,14 @@ define([
         that = this;
       this.svg.country.append("path")
         .datum(data).classed("typhoon", true)
-        .attr("stroke", app.colors.maroon)
+        .attr("stroke", app.colors.green1)
         .attr("fill", "none")
         .attr("d", line)
         .attr("stroke-width", 2)
         .attr("opacity", .5);
       this.svg.zoom.append("path")
         .datum(data).classed("typhoon", true)
-        .attr("stroke", app.colors.maroon)
+        .attr("stroke", app.colors.green1)
         .attr("fill", "none")
         .attr("d", line)
         .attr("stroke-width", 2)
@@ -88,7 +93,7 @@ define([
             var positions = projection([d.attributes.LON, d.attributes.LAT]);
             return "translate(" + positions[0] + ", " + positions[1] + ")";
         }).attr("r", 3)
-        .attr("fill", app.colors.maroon)
+        .attr("fill", app.colors.green1)
         .attr("stroke", "none");
       this.svg.zoom.selectAll('circle.typhoon')
         .data(data).enter().append("circle")
@@ -97,7 +102,7 @@ define([
             var positions = projection([d.attributes.LON, d.attributes.LAT]);
             return "translate(" + positions[0] + ", " + positions[1] + ")";
         }).attr("r", 3)
-        .attr("fill", app.colors.maroon)
+        .attr("fill", app.colors.green1)
         .attr("stroke", "none");
       this.scale = app.scale;
       this.typhoonIndex = app.typhoonIndex;
@@ -165,23 +170,21 @@ define([
         .attr("transform", "translate(" + positions[0] + ", " + positions[1] + ")")
         .attr("fill", "none")
         .attr("stroke", "#999")
-        .attr("stroke-width", 3)
+        .attr("stroke-width", 2)
         .call(this.dropDrag());
       this.dropCoords = [positions[0], positions[1]];
       this.zoomCoords = [coords.x, coords.y];
     },
     renderInstagram: function() {
-      var imageSize = 20,
+      var imageSize = 5,
         instagram = this.instagramModel.get("data"),
         grouped = this.instagramModel.get("grouped"),
         projection = this.countryModel.get("projection");
       this.svg.country.selectAll('circle.instagram')
-          .data(_.values(grouped)).enter().append("circle")
+          .data(_.values(grouped)).enter().insert("circle", "circle.drop")
           .classed("instagram", true)
           .attr("transform", function(d) {
               var positions = projection([d[0].location.longitude.toFixed(1), d[0].location.latitude.toFixed(1)]);
-              d.x = positions[0];
-              d.y = positions[1];
               return "translate(" + positions[0] + ", " + positions[1] + ")";
           }).attr("r", function(d) {
             return d.length;
@@ -207,6 +210,8 @@ define([
               return d.image.url;
           }).attr("opacity", .25)
           .attr("clip-path", "url('#clipCircle')");
+
+      this.filterInstagram();
     },
     zoom: function() {
       var that = this,
@@ -229,6 +234,8 @@ define([
             that.getTyphoonCoords(scale);
             that.scale = scale;
             that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
+            
+            that.filterInstagram();
           }).on("zoomend", function() {
             var scale = parseFloat(that.svg.zoom.attr("transform").split("scale(")[1].split(")")[0]);
             that.svg.zoom.selectAll("path").style("stroke-width", 1 / scale + "px");
@@ -239,7 +246,6 @@ define([
     drag: function() {
       var that = this,
         typhoonCoords = this.typhoonCoordsOriginal || [],
-        grouped = this.instagramModel.get("grouped"),
         drag = d3.behavior.drag()
           .on("drag", function() {
             var x = (d3.event.x > app.width ? app.width : (d3.event.x < 0 ? 0 : d3.event.x)),
@@ -266,14 +272,8 @@ define([
             that.zoomCoords[0] = newX;
             that.zoomCoords[1] = newY;
             that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
-            
-            // instagram
-            var radius = app.height / that.scale,
-              x1 = x - radius,
-              x2 = x + radius,
-              y1 = y - radius,
-              y2 = y + radius;
-            console.log(radius, x1, x2, y1, y2);
+          
+            that.filterInstagram();
           });
       return drag;
     },
@@ -299,6 +299,8 @@ define([
             that.getTyphoonCoords(scale);
             that.scale = scale;
             that.svg.zoom.attr("transform", "translate(" + newX + "," + newY + ")scale(" + (that.scale / 2) + ")");
+
+            that.filterInstagram();
           }).on("dragend", function() {
             var scale = parseFloat(that.svg.zoom.attr("transform").split("scale(")[1].split(")")[0]);
             that.svg.zoom.selectAll("path").style("stroke-width", 1 / scale + "px");
@@ -314,6 +316,58 @@ define([
         }
       });
       return this.typhoonCoords;
+    },
+    filterInstagram: function() {
+      var radius = app.height / this.scale,
+        x1 = this.dropCoords[0] - radius,
+        x2 = this.dropCoords[0] + radius,
+        y1 = this.dropCoords[1] - radius,
+        y2 = this.dropCoords[1] + radius,
+        grouped = this.instagramModel.get("grouped"),
+        mouseover = function(e) {
+            $(e.target).siblings(".instaCaption").css("opacity", 1);
+            $(e.target).siblings(".instaCaption").css("height", "195px");
+
+            return false;
+        },
+        mouseleave = function(e) {
+            $(e.target).siblings(".instaCaption").css("height", "0px");
+            $(e.target).siblings(".instaCaption").css("opacity", 0);
+
+            return false;
+        },
+        clickHover = function(e) {
+            var $card = $(e.target).parent(),
+                name = $card.children(".instaName").text(),
+                like_count = $card.children(".instaLike").html(),
+                date = $card.children(".instaDate").text(),
+                url = $card.children(".instaImage").attr("src"),
+                caption = $card.children(".instaCaption").text();
+
+            $(".modal").html(_.template(ImageModalTemplate, {
+                name: name,
+                like_count: like_count,
+                date: date,
+                url: url,
+                caption: caption
+            }));
+            $(".modal").modal("show");
+        };
+
+      $("#instagram").empty();
+      _.each(grouped, function(val, key) {
+        var groupX = parseFloat(key.split(",")[0]),
+          groupY = parseFloat(key.split(",")[1]);
+        if (groupX > x1 && groupX < x2 && groupY > y1 && groupY < y2) {
+          _.each(val, function(image) {
+            $("#instagram").prepend(_.template(ImageTemplate, image));
+          });
+        }
+      });
+
+      $(".instaHover").mouseenter(mouseover);
+      $(".instaHover").mouseleave(mouseleave);
+      $(".instaHover").click(clickHover);
     }
   })
 });

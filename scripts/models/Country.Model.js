@@ -18,7 +18,7 @@ define([
       var that = this;
       d3.json("json/ph.json", function(error, json) {
         var width = app.width,
-          height = app.height,
+          height = app.countryHeight,
           datum = topojson.feature(json, json.objects.places),
           center = d3.geo.centroid(datum),
           scale = 150,

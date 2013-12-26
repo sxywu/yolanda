@@ -19,7 +19,7 @@ define([
     minLon = 115,
     maxLon = 130;
   return Backbone.Model.extend({
-    fetch: function() {
+    fetch: function(projection) {
       var that = this;
       d3.json("json/instagram.json", function(response) {
         var instagram = _.chain(response)
@@ -31,18 +31,20 @@ define([
               && (obj.location.longitude < maxLon);
           }).sortBy(function(obj) {
             return obj.like_count;
-          }).last(200).value(),
+          }).last(50).value(),
           grouped = {};
           _.chain(instagram)
             .groupBy(function(obj) {
               return obj.location.latitude.toFixed(1);
             }).each(function(val, lat) {
               _.each(val, function(obj) {
-                var lon = obj.location.longitude.toFixed(1);
-                if (grouped[lat + "," + lon]) {
-                  grouped[lat + "," + lon].push(obj);
+                var lon = obj.location.longitude.toFixed(1),
+                  positions = projection([lon, lat]).join(",");
+                obj.caption = obj.caption || "";
+                if (grouped[positions]) {
+                  grouped[positions].push(obj);
                 } else {
-                  grouped[lat + "," + lon] = [obj];
+                  grouped[positions] = [obj];
                 }
               });
             });
